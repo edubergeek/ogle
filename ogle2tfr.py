@@ -36,8 +36,8 @@ if shuffle_data:
 # Divide the data into 60% train, 20% validation, and 20% test
 train_addrs = addrs[0:int(0.6*len(addrs))]
 train_labels = labels[0:int(0.6*len(labels))]
-val_addrs = addrs[int(0.6*len(addrs)):int(0.8*len(addrs))]
-val_labels = labels[int(0.6*len(addrs)):int(0.8*len(addrs))]
+valid_addrs = addrs[int(0.6*len(addrs)):int(0.8*len(addrs))]
+valid_labels = labels[int(0.6*len(addrs)):int(0.8*len(addrs))]
 test_addrs = addrs[int(0.8*len(addrs)):]
 test_labels = labels[int(0.8*len(labels)):]
 
@@ -119,12 +119,12 @@ writer.close()
 sys.stdout.flush()
 
 # open the TFRecords file
-val_filename = '%s/val.tfr'%(DATAPATH)  # address to save the TFRecords file
-writer = tf.python_io.TFRecordWriter(val_filename)
-for i in range(len(val_addrs)):
+valid_filename = '%s/valid.tfr'%(DATAPATH)  # address to save the TFRecords file
+writer = tf.python_io.TFRecordWriter(valid_filename)
+for i in range(len(valid_addrs)):
     # print how many images are saved every 1000 images
     if not i % 1000:
-        print('Val data: {}/{}'.format(i, len(val_addrs)))
+        print('Val data: {}/{}'.format(i, len(valid_addrs)))
         sys.stdout.flush()
     # Load the image
     lightcurve = load_star(train_addrs[i])
