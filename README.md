@@ -20,3 +20,10 @@ f is filter 0 (I) or 1 (V)
 e is error
 m is magnitude
 
+ogle2tfr.py is a file walker that converts .dat files into TFRecord format with train/valid/test splits.
+plottfr.py visualizes the training examples reading the TFRecord training set.
+train.py is the first attempt at training an RNN (GRU) model.
+traintfr.py is the RNN using the TFR training data
+train-fc.py is an ANN (FC) model
+train-cnn.py is a CNN model
+periodogram.py performs inference on .dat files (file walker) using a trained model then prints and  plots results.
