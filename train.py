@@ -3,18 +3,20 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.python.keras._impl.keras.models import Sequential
 #from keras.models import Sequential
-from tensorflow.python.keras._impl.keras.layers import Flatten, Dense, LSTM
+from tensorflow.python.keras._impl.keras.layers import Flatten, Dense, LSTM, GRU
 #from keras.layers import Flatten, Dense, LSTM
-from tensorflow.python.keras._impl.keras.optimizers import RMSprop
+from tensorflow.python.keras._impl.keras.optimizers import RMSprop, Adam, SGD
 #from keras.optimizers import RMSprop
 from tensorflow.python.keras._impl.keras import backend as K
 #from keras import backend as K
+#from tensorflow.python.keras._impl.keras.wrappers.scikit_learn import KerasRegressor
+#from keras.wrappers.scikit_learn import KerasRegressor
 
 
 model_name = 'test'
 n_epochs = 10
-n_steps = 10000
-batch_size = 32
+n_steps = 20000
+batch_size = 512
 dropout = 0.0
 rdropout = 0.0
 
@@ -41,7 +43,7 @@ def the_input_iterator(filenames, perform_shuffle=False, repeat_count=1, batch_s
         x_shape = tf.stack([400, 3])
         x = tf.reshape(x, x_shape)
 	    
-        d={'lstm1_input':x},y
+        d={'gru1_input':x},y
         return d
     
     dataset = tf.data.TFRecordDataset(filenames=filenames)
@@ -50,7 +52,7 @@ def the_input_iterator(filenames, perform_shuffle=False, repeat_count=1, batch_s
     dataset = dataset.map(_parse_function)
     if perform_shuffle:
         # Randomizes input using a window of 256 elements (read into memory)
-        dataset = dataset.shuffle(buffer_size=256)
+        dataset = dataset.shuffle(buffer_size=1024)
     dataset = dataset.repeat(repeat_count)  # Repeats dataset this # times
     dataset = dataset.batch(batch_size)  # Batch size to use
     iterator = dataset.make_one_shot_iterator()
@@ -59,11 +61,20 @@ def the_input_iterator(filenames, perform_shuffle=False, repeat_count=1, batch_s
 
 def neuralnetwork():
     model = Sequential()
-    model.add(LSTM(128, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, input_shape=(400, 3), name='lstm1'))
-    model.add(LSTM(64, dropout=dropout, recurrent_dropout=rdropout))
-    model.add(Dense(128, name='fc1'))
+    model.add(GRU(400, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, input_shape=(400, 3), name='gru1'))
+    #model.add(GRU(400, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, name='gru2'))
+    #model.add(GRU(400, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, name='gru3'))
+    #model.add(GRU(400, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, name='gru4'))
+    #model.add(LSTM(256, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, name='lstm2'))
+    #model.add(LSTM(128, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, name='lstm3'))
+    model.add(GRU(400, return_sequences=True, dropout=dropout, recurrent_dropout=rdropout, name='gru2'))
+    model.add(Dense(1024, activation='tanh', name='fc1'))
+    model.add(Dense(512, activation='tanh', name='fc2'))
+    model.add(Dense(128, activation='tanh', name='fc3'))
     model.add(Dense(1, name='prediction'))
-    model.compile(optimizer=RMSprop(), loss='mean_squared_error')
+    #model.compile(optimizer=RMSprop(lr=1e-2), loss='mean_squared_error')
+    #model.compile(optimizer=Adam(lr=1e-1), loss='mae', metrics= ['mae', 'acc'])
+    model.compile(optimizer=SGD(lr=1e-4), loss='mae', metrics= ['mse', 'mape'])
     model.summary()
     return model
 
@@ -76,6 +87,7 @@ def train():
     os.makedirs(model_dir, exist_ok=True)
     print("model_dir: ",model_dir)
     the_estimator = tf.keras.estimator.model_to_estimator(keras_model=model, model_dir=model_dir)
+    #the_estimator = KerasRegressor(build_fn=model, epochs=n_epochs, batch_size=batch_size, verbose=1)
 
     train_spec = tf.estimator.TrainSpec(input_fn=lambda: the_input_iterator(train_path,
              perform_shuffle=True, repeat_count=n_epochs, batch_size=batch_size), max_steps=n_steps)
