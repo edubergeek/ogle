@@ -36,22 +36,35 @@ with tf.Session() as sess:
     threads = tf.train.start_queue_runners(coord=coord)
 
     # Now we read batches of images and labels and plot them
-    for batch_index in range(3):
+    for batch_index in range(10):
         lightcurve, period = sess.run([X, Y])
-
+        p = period
+        if p[0] >= 100.0:
+            p = np.round(p, 2)
+        elif p[0] >= 10.0:
+            p = np.round(p, 3)
+        elif p[0] >= 1.0:
+            p = np.round(p, 4)
+        elif p[0] >= 0.1:
+            p = np.round(p, 5)
+        else:
+            p = np.round(p, 6)
         lc = np.reshape(lightcurve,(-1, 400, 3))
-        for n in range(399,0,-1):
-            if lc[0,n,0] > 0.0:
-                break
-        steps=n+1
+        lc[0,:,0] = lc[0,:,0] % p[0]
+        #for n in range(399,0,-1):
+        #    if lc[0,n,0] > 0.0:
+        #        break
+        #steps=n+1
         #for n in range(0,399,1):
         #    if lc[0,n,0] - lc[0,0,0] > 30.0:
         #        break
         #steps=n
-        Range = lc[0,0:steps,0]
-        Series = lc[0,0:steps,1]
-        print(period[0])
-        plt.plot(Range, Series, 'bo', markersize=2)
+        #Range = lc[0,0:steps,0]
+        #Series = lc[0,0:steps,1]
+        Range = lc[0,:,1]
+        Series = lc[0,:,0]
+        print(period[0], p[0])
+        plt.plot(Series, Range, 'bo', markersize=2)
         #plt.plot(lightcurve[0], lightcurve[2], 'b')
         #plt.title(lightcurve)
         plt.show()
