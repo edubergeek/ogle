@@ -1,15 +1,24 @@
 from random import shuffle
 import glob
 import sys
-#import cv2
-import tensorflow as tf
 import numpy as np
-import pickle
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.models import model_from_json
+from tensorflow.keras.optimizers import Adam
+
+dirsep = '/'
+csvdelim = ','
+pathData='./ogle/data'
+pathWeight = './models/cnn.h5'  # The HDF5 weight file generated for the trained model
+pathModel = './models/cnn.nn'  # The model saved as a JSON file
 
 DATAPATH='./ogle/data'
 STEPS = 400
-shuffle_data = False  # shuffle the addresses before saving
-dataset_path = './I/*LMC*.dat'
+shuffle_data = True  # shuffle the addresses before saving
+dataset_path = './[IV]/*.dat'
+#manifest_path = './OGLE-CEP.txt'
+manifest_path = './manifest.txt'
 # read addresses and labels from the 'train' folder
 addrs = glob.glob(dataset_path)
 #labels = [0 if 'cat' in addr else 1 for addr in addrs]  # 0 = Cat, 1 = Dog
@@ -41,7 +50,6 @@ valid_labels = labels[int(0.6*len(addrs)):int(0.8*len(addrs))]
 test_addrs = addrs[int(0.8*len(addrs)):]
 test_labels = labels[int(0.8*len(labels)):]
 
-#path = './OGLE-CEP.txt'
 def load_manifest(path):
     manifest = np.loadtxt(path, dtype={'names': ('star', 'field', 'starID', 'ra', 'dec', 'typ', 'subtyp', 'Imag', 'Vmag', 'pd', 'Iamp'), 'formats': ('S18', 'S10', 'i4', 'f4', 'f4', 'S8', 'S8', 'f4', 'f4', 'f4', 'f4')})
     return manifest
@@ -50,6 +58,12 @@ def load_manifest(path):
 def load_star(path):
     lightcurve = np.loadtxt(path, dtype={'names': ('jd', 'mag', 'err'), 'formats': ('f4', 'f4', 'f4')})
     return lightcurve
+
+def normalize(x):
+    x['jd'] = x['jd'] - x['jd'][0]
+    min_mag = np.min(x['mag'])
+    x['mag'] = x['mag'] - min_mag
+    return x
 
 def pad_or_truncate(x, steps):
     z = (0.0, 0.0, 0.0)
@@ -77,19 +91,22 @@ def _int64_feature(value):
 def _bytes_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-manifest = load_manifest('./OGLE-CEP.txt')
+manifest = load_manifest(manifest_path)
 
 def get_period(manifest, path):
   stars = manifest['star']
   key = path.split('/')[2]
   key = key.split('.')[0]
   ind = np.searchsorted(manifest['star'],key)
+  #print(key, ind, manifest['star'][ind], manifest['pd'][ind])
   # if ind is zero check whether it really is the first star in the list
   # return 0.0 on error
-  if ind == 0:
-    if  key != manifest['star'][0]:
-      return 0.0
-  return manifest['pd'][ind]
+  #if ind == 0:
+  #  if  key != manifest['star'][0]:
+  #    return 0.0
+  return manifest['pd'][ind], ind
+
+
 
 train_filename = '%s/train.tfr'%(DATAPATH)  # address to save the TFRecords file
 # open the TFRecords file
@@ -101,10 +118,12 @@ for i in range(len(train_addrs)):
         sys.stdout.flush()
     # Load the image
     lightcurve = load_star(train_addrs[i])
+    lightcurve = normalize(lightcurve)
     lightcurve = pad_or_truncate(lightcurve, STEPS)
     x = []
     list(x.extend(row) for row in lightcurve)
-    y = get_period(manifest, train_addrs[i])
+    y, star = get_period(manifest, train_addrs[i])
+    #print("Star %s Period %f"%(star, y))
     # Create a feature
     feature = {'train/period': _float_feature(y),
                'train/data': _floatvector_feature(x)
@@ -127,11 +146,13 @@ for i in range(len(valid_addrs)):
         print('Val data: {}/{}'.format(i, len(valid_addrs)))
         sys.stdout.flush()
     # Load the image
-    lightcurve = load_star(train_addrs[i])
+    lightcurve = load_star(valid_addrs[i])
+    lightcurve = normalize(lightcurve)
     lightcurve = pad_or_truncate(lightcurve, STEPS)
     x = []
     list(x.extend(row) for row in lightcurve)
-    y = get_period(manifest, train_addrs[i])
+    y, star = get_period(manifest, valid_addrs[i])
+    #print("Star %s Period %f"%(star, y))
     # Create a feature
     feature = {'train/period': _float_feature(y),
                'train/data': _floatvector_feature(x)
@@ -152,15 +173,16 @@ for i in range(len(test_addrs)):
         print('Test data: {}/{}'.format(i, len(test_addrs)))
         sys.stdout.flush()
     # Load the image
-    lightcurve = load_star(train_addrs[i])
+    lightcurve = load_star(test_addrs[i])
+    lightcurve = normalize(lightcurve)
     lightcurve = pad_or_truncate(lightcurve, STEPS)
     x = []
     list(x.extend(row) for row in lightcurve)
-    y = get_period(manifest, train_addrs[i])
+    y, star = get_period(manifest, test_addrs[i])
+    #print("Star %s Period %f"%(star, y))
     # Create a feature
     feature = {'train/period': _float_feature(y),
                'train/data': _floatvector_feature(x)
-               #'train/data': _bytes_feature(tf.compat.as_bytes(pickle.dumps(y)))
               }
     # Create an example protocol buffer
     example = tf.train.Example(features=tf.train.Features(feature=feature))
