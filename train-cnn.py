@@ -16,7 +16,7 @@ YDim=400
 sizeBatch=128
 #sizeValid=1601
 sizeValid=2000
-nEpochs=500
+nEpochs=25000
 #nExamples=4803
 nExamples=9589
 
@@ -32,9 +32,9 @@ def PNet():
   #conv1 = Conv2D(32, (5, 5), activation='relu', padding='same')(conv1)
 
   #inputs = Reshape((40,10,3))(inputs)
-  conv1 = Conv2D(512, (256, 1), activation='relu', padding='same')(inputs)
+  conv1 = Conv2D(512, (256, 1), activation='linear', padding='same')(inputs)
   #pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
-  conv2 = Conv2D(16, (128, 1), activation='relu', padding='same')(conv1)
+  conv2 = Conv2D(16, (128, 1), activation='linear', padding='same')(conv1)
   #pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
   #conv3 = Conv2D(128, (32, 1), activation='relu', padding='same')(conv2)
   #pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
